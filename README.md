@@ -1,22 +1,22 @@
 puppet-role_salep
 ===================
 
-Puppet role definition for deployment of salep webcrawler using docker
+Puppet role definition for deployment of treebase using docker
 
 Parameters
 -------------
 Sensible defaults for Naturalis in init.pp
 
 ```
-  $minio_key                              = '123456',
-  $minio_secret                           = '12345678',
+
+
 
 ```
 
 
 Classes
 -------------
-- role_salep::init
+- role_dockertreebase::init
 
 Dependencies
 -------------
@@ -25,11 +25,11 @@ gareth/docker
 
 Puppet code
 ```
-class { role_salep: }
+class { role_dockertreebase: }
 ```
 Result
 -------------
-Salep webcrawler deployment using docker-compose which should result in running python salep crawler logging to elasticsearch, visible in kibana and data extractable using minio.
+Running treebase server with empty db
 
 
 Limitations

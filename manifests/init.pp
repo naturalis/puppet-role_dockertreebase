@@ -1,4 +1,4 @@
-# == Class: role_salep
+# == Class: role_dockertreebase
 #
 # === Authors
 #
@@ -8,19 +8,14 @@
 #
 # Apache2 license 2017.
 #
-class role_salep (
+class role_dockertreebase (
   $compose_version      = '1.17.0',
-  $miniokey             = '12345',
-  $miniosecret          = '12345678',
-  $repo_source          = 'https://github.com/naturalis/docker-salep.git',
+  $repo_source          = 'https://github.com/naturalis/docker-treebase.git',
   $repo_ensure          = 'latest',
-  $repo_dir             = '/opt/salep',
-	$kibana_auth          = 'traefik.frontend.auth.basic=kibana:$$apr1$$ftqdhhqs$$rkzzoj02m.k3eq4qkn3re/',
-	$minio_url            = 'salep-minio.naturalis.nl',
-	$kibana_url						= 'salep-kibana.naturalis.nl',
+  $repo_dir             = '/opt/treebase',
   $lets_encrypt_mail    = 'mail@example.com',
-	$traefik_toml_file    = '/opt/traefik/traefik.toml',
-	$traefik_acme_json    = '/opt/traefik/acme.json'
+  $traefik_toml_file    = '/opt/traefik/traefik.toml',
+  $traefik_acme_json    = '/opt/traefik/acme.json'
 
 ){
 
@@ -29,7 +24,7 @@ class role_salep (
 
   Exec {
     path => '/usr/local/bin/',
-    cwd  => "${role_salep::repo_dir}",
+    cwd  => "${role_dockertreebase::repo_dir}",
   }
 
   file { ['/data','/opt/traefik'] :
@@ -38,7 +33,7 @@ class role_salep (
 
 	file { $traefik_toml_file :
 		ensure   => file,
-		content  => template('role_salep/traefik.toml.erb'),
+		content  => template('role_dockertreebase/traefik.toml.erb'),
 		require  => File['/opt/traefik'],
 		notify   => Exec['Restart containers on change'],
 	}
@@ -50,25 +45,25 @@ class role_salep (
 		notify   => Exec['Restart containers on change'],
 	}
 
-  file { "${role_salep::repo_dir}/.env":
+  file { "${role_dockertreebase::repo_dir}/.env":
 		ensure   => file,
-		content  => template('role_salep/prod.env.erb'),
-    require  => Vcsrepo[$role_salep::repo_dir],
+		content  => template('role_dockertreebase/prod.env.erb'),
+    require  => Vcsrepo[$role_dockertreebase::repo_dir],
 		notify   => Exec['Restart containers on change'],
 	}
 
   class {'docker::compose': 
     ensure      => present,
-    version     => $role_salep::compose_version
+    version     => $role_dockertreebase::compose_version
   }
 
   package { 'git':
     ensure   => installed,
   }
 
-  vcsrepo { $role_salep::repo_dir:
-    ensure    => $role_salep::repo_ensure,
-    source    => $role_salep::repo_source,
+  vcsrepo { $role_dockertreebase::repo_dir:
+    ensure    => $role_dockertreebase::repo_ensure,
+    source    => $role_dockertreebase::repo_source,
     provider  => 'git',
     user      => 'root',
     revision  => 'master',
@@ -79,13 +74,12 @@ class role_salep (
 		ensure   => present,
 	}
 
-  docker_compose { "${role_salep::repo_dir}/docker-compose.yml":
+  docker_compose { "${role_dockertreebase::repo_dir}/docker-compose.yml":
     ensure      => present,
-#    options			=> "-f ${role_salep::repo_dir}/docker-compose.prod.yml --project-directory ${role_salep::repo_dir}",
     require     => [ 
-			Vcsrepo[$role_salep::repo_dir],
+			Vcsrepo[$role_dockertreebase::repo_dir],
 			File[$traefik_acme_json],
-			File["${role_salep::repo_dir}/.env"],
+			File["${role_dockertreebase::repo_dir}/.env"],
 			File[$traefik_toml_file],
 			Docker_network['web']
 		]
@@ -102,52 +96,10 @@ class role_salep (
     require  => Exec['Pull containers']
   }
 
-  exec { 'Run salep job' :
-    command  => 'docker-compose exec -d salep bash -c "cd /usr/local/lib/python3.5/dist-packages/ebay_scraper; scrapy crawl ebay_spider"',
-    schedule => 'weekly',
-    require  => Exec['Up the containers to resolve updates'],
-  }
-
-  exec {'Set replicas of kibana to 0':
-    command => 'docker-compose exec -T salep bash -c "curl -s -XPUT -H \"Content-Type: application/json\" elasticsearch:9200/_settings -d \'{\"number_of_replicas\": 0}\'"',
-    unless  => 'docker-compose exec -T salep bash -c "curl -s elasticsearch:9200/_cat/indices/.kibana?h=rep | grep ^0$"',
-		require => Docker_compose["${role_salep::repo_dir}/docker-compose.yml"],
-  }
-
-  exec {'Copy mapping to salep volume':
-    command => '/bin/cp elasticsearch_mapping.json /data/salep/elasticsearch_mapping.json',
-    creates => '/data/salep/elasticsearch_mapping.json',
-		require => Docker_compose["${role_salep::repo_dir}/docker-compose.yml"],
-  }
-
-  exec {'Set mapping for salep':
-    command => 'docker-compose exec -T salep bash -c "curl -s -XPUT -H \"Content-Type: application/json\" elasticsearch:9200/scrapy -d @/data/elasticsearch_mapping.json "',
-    unless  => 'docker-compose exec -T salep bash -c "curl -s elasticsearch:9200/_cat/indices?h=index | grep scrapy"',
-    require => [
-			Exec['Copy mapping to salep volume'],
-			Docker_compose["${role_salep::repo_dir}/docker-compose.yml"]
-			]
-  }
-
   exec {'Restart containers on change':
-	  refreshonly => true,
-		command     => 'docker-compose up -d',
-		require     => Docker_compose["${role_salep::repo_dir}/docker-compose.yml"],
-	}
-
-  # deze gaat per dag 1 keer checken
-  # je kan ook een range aan geven, bv tussen 7 en 9 's ochtends
-  schedule { 'everyday':
-     period  => daily,
-     repeat  => 1,
-     range => '5-7',
-  }
-
-  schedule { 'weekly':
-     period  => weekly,
-     repeat  => 1,
-     range => '5-7',
-		 weekday => 'Saturday'
+    refreshonly => true,
+    command     => 'docker-compose up -d',
+    require     => Docker_compose["${role_dockertreebase::repo_dir}/docker-compose.yml"],
   }
 
 
