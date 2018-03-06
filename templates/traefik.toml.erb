@@ -7,12 +7,12 @@ defaultEntryPoints = ["http"]
   [entryPoints.http]
   address = ":80"
     [entryPoints.http.redirect]
-    regex = "treebase.org/$"
-    replacement = "treebase.org/treebase-web$1"
+    regex = "<%= scope['role_dockertreebase::siteUrl'] %>/$"
+    replacement = "<%= scope['role_dockertreebase::siteUrl'] %>/treebase-web$1"
 [retry]
 
 [docker]
 endpoint = "unix:///var/run/docker.sock"
-domain = "treebase.org"
+domain = "<%= scope['role_dockertreebase::siteUrl'] %>"
 watch = true
 exposedbydefault = false

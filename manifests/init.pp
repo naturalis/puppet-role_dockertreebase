@@ -9,14 +9,15 @@
 # Apache2 license 2017.
 #
 class role_dockertreebase (
-  $compose_version      = '1.17.0',
+  $compose_version      = '1.17.1',
   $repo_source          = 'https://github.com/naturalis/docker-treebase.git',
   $repo_ensure          = 'latest',
   $repo_dir             = '/opt/treebase',
+  $db_password          = 'PASSWORD',
   $lets_encrypt_mail    = 'mail@example.com',
   $traefik_toml_file    = '/opt/traefik/traefik.toml',
-  $traefik_acme_json    = '/opt/traefik/acme.json'
-
+  $traefik_acme_json    = '/opt/traefik/acme.json',
+  $siteUrl              = 'testnat2.treebase.org'
 ){
 
   include 'docker'
@@ -31,26 +32,33 @@ class role_dockertreebase (
     ensure              => directory,
   }
 
-	file { $traefik_toml_file :
-		ensure   => file,
-		content  => template('role_dockertreebase/traefik.toml.erb'),
-		require  => File['/opt/traefik'],
-		notify   => Exec['Restart containers on change'],
-	}
+  file { $traefik_toml_file :
+    ensure   => file,
+    content  => template('role_dockertreebase/traefik.toml.erb'),
+    require  => File['/opt/traefik'],
+    notify   => Exec['Restart containers on change'],
+  }
 
   file { $traefik_acme_json :
-		ensure   => present,
-		mode     => '0600',
-		require  => File['/opt/traefik'],
-		notify   => Exec['Restart containers on change'],
-	}
+    ensure   => present,
+    mode     => '0600',
+    require  => File['/opt/traefik'],
+    notify   => Exec['Restart containers on change'],
+  }
 
   file { "${role_dockertreebase::repo_dir}/.env":
-		ensure   => file,
-		content  => template('role_dockertreebase/prod.env.erb'),
+    ensure   => file,
+    content  => template('role_dockertreebase/prod.env.erb'),
     require  => Vcsrepo[$role_dockertreebase::repo_dir],
-		notify   => Exec['Restart containers on change'],
-	}
+    notify   => Exec['Restart containers on change'],
+  }
+
+  file { "${role_dockertreebase::repo_dir}/context.xml":
+    ensure   => file,
+    content  => template('role_dockertreebase/context.xml.erb'),
+    require  => Vcsrepo[$role_dockertreebase::repo_dir],
+    notify   => Exec['Restart containers on change'],
+  }
 
   class {'docker::compose': 
     ensure      => present,
@@ -70,19 +78,19 @@ class role_dockertreebase (
     require   => Package['git'],
   }
 
-	docker_network { 'web':
-		ensure   => present,
-	}
+  docker_network { 'web':
+    ensure   => present,
+  }
 
   docker_compose { "${role_dockertreebase::repo_dir}/docker-compose.yml":
     ensure      => present,
     require     => [ 
-			Vcsrepo[$role_dockertreebase::repo_dir],
-			File[$traefik_acme_json],
-			File["${role_dockertreebase::repo_dir}/.env"],
-			File[$traefik_toml_file],
-			Docker_network['web']
-		]
+      Vcsrepo[$role_dockertreebase::repo_dir],
+      File[$traefik_acme_json],
+      File["${role_dockertreebase::repo_dir}/.env"],
+      File[$traefik_toml_file],
+      Docker_network['web']
+    ]
   }
 
   exec { 'Pull containers' :
@@ -102,5 +110,12 @@ class role_dockertreebase (
     require     => Docker_compose["${role_dockertreebase::repo_dir}/docker-compose.yml"],
   }
 
+  # deze gaat per dag 1 keer checken
+  # je kan ook een range aan geven, bv tussen 7 en 9 's ochtends
+  schedule { 'everyday':
+     period  => daily,
+     repeat  => 1,
+     range => '5-7',
+  }
 
 }
