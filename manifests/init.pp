@@ -17,7 +17,7 @@ class role_dockertreebase (
   $lets_encrypt_mail    = 'mail@example.com',
   $traefik_toml_file    = '/opt/traefik/traefik.toml',
   $traefik_acme_json    = '/opt/traefik/acme.json',
-  $siteUrl              = 'testnat2.treebase.org'
+  $siteUrl              = 'www.treebase.org'
 ){
 
   include 'docker'
@@ -49,13 +49,6 @@ class role_dockertreebase (
   file { "${role_dockertreebase::repo_dir}/.env":
     ensure   => file,
     content  => template('role_dockertreebase/prod.env.erb'),
-    require  => Vcsrepo[$role_dockertreebase::repo_dir],
-    notify   => Exec['Restart containers on change'],
-  }
-
-  file { "${role_dockertreebase::repo_dir}/context.xml":
-    ensure   => file,
-    content  => template('role_dockertreebase/context.xml.erb'),
     require  => Vcsrepo[$role_dockertreebase::repo_dir],
     notify   => Exec['Restart containers on change'],
   }

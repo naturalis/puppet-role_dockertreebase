@@ -1,14 +1,19 @@
 debug = false
 checkNewVersion = true
 logLevel = "INFO"
-defaultEntryPoints = ["http"]
+defaultEntryPoints = ["http","https"]
 
 [entryPoints]
-  [entryPoints.http]
+ [entryPoints.http]
   address = ":80"
     [entryPoints.http.redirect]
+      entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.redirect]
     regex = "<%= scope['role_dockertreebase::siteUrl'] %>/$"
     replacement = "<%= scope['role_dockertreebase::siteUrl'] %>/treebase-web$1"
+    [entryPoints.https.tls]
 [retry]
 
 [docker]
@@ -16,3 +21,13 @@ endpoint = "unix:///var/run/docker.sock"
 domain = "<%= scope['role_dockertreebase::siteUrl'] %>"
 watch = true
 exposedbydefault = false
+
+[acme]
+email = "aut@naturalis.nl"
+storage = "acme.json"
+entryPoint = "https"
+onHostRule = true
+onDemand = false
+
+[acme.httpChallenge]
+entryPoint = "http"
