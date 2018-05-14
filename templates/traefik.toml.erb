@@ -1,4 +1,4 @@
-debug = false
+debug = true
 checkNewVersion = true
 logLevel = "INFO"
 defaultEntryPoints = ["http","https"]
@@ -28,6 +28,10 @@ storage = "acme.json"
 entryPoint = "https"
 onHostRule = true
 onDemand = false
+
+[[acme.domains]]
+  main = "<%= scope['role_dockertreebase::siteUrl'] %>"
+  sans = ["www.<%= scope['role_dockertreebase::siteUrl'] %>"]
 
 [acme.httpChallenge]
 entryPoint = "http"
