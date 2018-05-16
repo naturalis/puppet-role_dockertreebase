@@ -17,7 +17,8 @@ class role_dockertreebase (
   $lets_encrypt_mail    = 'mail@example.com',
   $traefik_toml_file    = '/opt/traefik/traefik.toml',
   $traefik_acme_json    = '/opt/traefik/acme.json',
-  $siteUrl              = 'www.treebase.org'
+  $siteUrl              = 'treebase.org',
+  $siteSansUrl          = 'www.treebase.org'
 ){
 
   include 'docker'

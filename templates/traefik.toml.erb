@@ -31,7 +31,9 @@ onDemand = false
 
 [[acme.domains]]
   main = "<%= scope['role_dockertreebase::siteUrl'] %>"
-  sans = ["www.<%= scope['role_dockertreebase::siteUrl'] %>"]
+<% if scope['role_dockertreebase::siteSansUrl'] != "" %>
+  sans = ["<%= scope['role_dockertreebase::siteSansUrl'] %>"]
+<% end %>
 
 [acme.httpChallenge]
 entryPoint = "http"
